@@ -1,11 +1,19 @@
 # STARK - SNARK recursive proofs
 
+> This project is built upon a codebase co-developed by [VictorColomb](https://github.com/VictorColomb) and [mt-clemente](https://github.com/mt-clemente).
+>
+> Link to original [SNARK recursive proofs](https://github.com/VictorColomb/stark-snark-recursive-proofs) library.
+
 The point of this library is to combine the SNARK and STARK computation arguments of knowledge, namely the [Winterfell](https://github.com/novifinancial/winterfell) library for the generation of STARKs and the [Circom](https://docs.circom.io/) language, combined with the Groth16 protocol for SNARKs.
 
 They allow the combinaison of advantages of both proof systems:
 
 - Groth16 (SNARK): constant-time proofs, constant-time verification, etc.
 - Winterfell: flexibility of the AIR construct
+
+## Acknowledgements
+
+Special thanks to [VictorColomb](https://github.com/VictorColomb) and [mt-clemente](https://github.com/mt-clemente) for their open-source spirit and contributions to the [SNARK recursive proofs](https://github.com/VictorColomb/stark-snark-recursive-proofs) library. We're grateful for their hard work, which laid the foundation for this project.
 
 ## 🗝️ Powers of tau phase 1 transcript
 
@@ -36,8 +44,10 @@ cargo run --release -p example-sum --bin verify
 ```
 
 ## 🪛 Implementing an algorithm
+
 <details style="margin: 10px 0 20px 0;">
 <summary style="padding:5px;">Click to show/hide</summary>
+
 
 This example is available fully-functional in the `examples/sum` folder.
 
@@ -85,8 +95,8 @@ impl Serializable for PublicInputs {
 ```
 
 3. Implement Winterfell `Air` trait. See their [documentation](https://docs.rs/winterfell/latest/) for instructions. \
-While writing methods, make sure to use the [WinterCircomProofOptions] constant you previously defined, instead of hard coded values. \
-Also implement the `Default` trait for your `Air` implementation.
+   While writing methods, make sure to use the [WinterCircomProofOptions] constant you previously defined, instead of hard coded values. \
+   Also implement the `Default` trait for your `Air` implementation.
 
 ```rust
 use winter_circom_prover::{winterfell::{
@@ -163,7 +173,7 @@ impl Default for WorkAir {
 ```
 
 4. Implement the Winterfell `Prover` trait. See their [documentation](https://docs.rs/winterfell/latest/) for instructions. \
-Also implement a method to build the trace.
+   Also implement a method to build the trace.
 
 ```rust
 use winter_circom_prover::winterfell::{
@@ -386,6 +396,7 @@ fn main() -> Result<(), WinterCircomError> {
     Ok(())
 }
 ```
+
 </details>
 
 ## 📖 Library
@@ -413,6 +424,7 @@ The generated proofs are composed of a Groth16 proof and a set of public inputs,
 <details style="padding-bottom: 10px;">
 <summary><h3 style="display: inline-block;padding: 5px;">Out-of-domain consistency check</h3></summary>
 
+
 To preserve the flexibility of STARKs compared to the constrained arithmetization of STARKs and especially the Groth16 protocol, the out-of-domain (OOD) consistency check, which requires the evaluations of a user-defined arbitrary function, is done alongside the Circom verification circuit.
 
 The fact that the out-of-domain trace frame and constraint evaluations are consistent is therefore not guaranteed by the Groth16 proof. This is why this crate provides a [check_ood_frame] function, that must be used alongside the [circom_verify] function and which takes the Groth16 public inputs and performs the OOD consistency check.
@@ -425,9 +437,6 @@ This means that verifying the Groth16 proof and the OOD consistency guarantees t
 ## 🚀 To-Do
 
 - Add support for Winterfell's cyclic assertions.
-- Implement additional proof-of-concept examples.
-- Add support for global public inputs, alongside the OOD trace frame and constraint evaluations.
-- Automate generation of `AIRTransitions` and `AIRAssertions` templates.
 
 ## ⚠️ Disclaimer
 
