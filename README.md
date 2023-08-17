@@ -13,7 +13,7 @@ They allow the combinaison of advantages of both proof systems:
 
 ## Acknowledgements
 
-Special thanks to `VictorColomb` and `mt-clemente` for their open-source spirit and contributions to the `STARK - SNARK recursive proofs` library. We're grateful for their hard work, which laid the foundation for this project.
+Special thanks to **VictorColomb** and **mt-clemente** for their open-source spirit and contributions to the **STARK - SNARK recursive proofs** library. We're grateful for their hard work, which laid the foundation for this project.
 
 ## 🗝️ Powers of tau phase 1 transcript
 
