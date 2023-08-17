@@ -2,7 +2,7 @@
 
 > This project is built upon a codebase co-developed by [VictorColomb](https://github.com/VictorColomb) and [mt-clemente](https://github.com/mt-clemente).
 >
-> Link to original [SNARK recursive proofs](https://github.com/VictorColomb/stark-snark-recursive-proofs) library.
+> Link to original [STARK - SNARK recursive proofs](https://github.com/VictorColomb/stark-snark-recursive-proofs) library.
 
 The point of this library is to combine the SNARK and STARK computation arguments of knowledge, namely the [Winterfell](https://github.com/novifinancial/winterfell) library for the generation of STARKs and the [Circom](https://docs.circom.io/) language, combined with the Groth16 protocol for SNARKs.
 
@@ -13,7 +13,7 @@ They allow the combinaison of advantages of both proof systems:
 
 ## Acknowledgements
 
-Special thanks to [VictorColomb](https://github.com/VictorColomb) and [mt-clemente](https://github.com/mt-clemente) for their open-source spirit and contributions to the [SNARK recursive proofs](https://github.com/VictorColomb/stark-snark-recursive-proofs) library. We're grateful for their hard work, which laid the foundation for this project.
+Special thanks to `VictorColomb` and `mt-clemente` for their open-source spirit and contributions to the `STARK - SNARK recursive proofs` library. We're grateful for their hard work, which laid the foundation for this project.
 
 ## 🗝️ Powers of tau phase 1 transcript
 
