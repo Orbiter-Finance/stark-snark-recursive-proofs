@@ -28,7 +28,6 @@ include "utils.circom";
  * - boundary_coeffs: coefficients for boundary constraints needed for the OOD consistency check.
  * - deep_trace_coefficients: trace coefficients for DEEP composition polynomial.
  * - deep_constraint_coefficients: constraint coefficients for DEEP composition polynomial.
- * - degree_adjustment_coefficients : coefficients used when adjusting degrees during DEEP composition.
  * - layer_alphas: see fri.circom
  * - query_positions: positions at wich we will check the openings for both trace states and constraint evaluations.
  * - z: Out Of Domain point of evaluation, generated in the public coin.
@@ -47,22 +46,23 @@ template PublicCoin(
     num_queries,
     num_transition_constraints,
     trace_length,
-    trace_width
+    trace_width,
+    constraint_frame_width
 ) {
     var num_seeds = 6 + num_fri_layers + 1;
 
     signal input constraint_commitment;
     signal input fri_commitments[num_fri_layers + 1];
-    signal input ood_constraint_evaluations[trace_width];
+    signal input ood_constraint_evaluations[constraint_frame_width];
     signal input ood_trace_frame[2][trace_width];
     signal input pow_nonce;
     signal input pub_coin_seed[num_pub_coin_seed];
     signal input trace_commitment;
 
     signal output boundary_coeffs[num_assertions][2];
-    signal output deep_trace_coefficients[trace_width][3];
-    signal output deep_constraint_coefficients[trace_width];
-    signal output degree_adjustment_coefficients[2];
+    signal output deep_trace_coefficients[trace_width];
+    signal output deep_constraint_coefficients[constraint_frame_width];
+    // signal output degree_adjustment_coefficients[2];
     signal output layer_alphas[num_fri_layers + 1];
     signal output query_positions[num_queries];
     signal output transition_coeffs[num_transition_constraints][2];
@@ -136,14 +136,14 @@ template PublicCoin(
     reseed[k] = Reseed(trace_width);
     reseed[k].prev_seed <== reseed[k-1].out;
     for (var i = 0; i < trace_width; i++){
-        reseed[k].in[i] <== ood_trace_frame[0][i];
+        reseed[k].in[i] <== ood_trace_frame[0][i]; //ood_main_trace_frame.current()
     }
 
     k += 1;
     reseed[k] = Reseed(trace_width);
     reseed[k].prev_seed <== reseed[k-1].out;
     for (var i = 0; i < trace_width; i++){
-        reseed[k].in[i] <== ood_trace_frame[1][i];
+        reseed[k].in[i] <== ood_trace_frame[1][i]; //ood_main_trace_frame.next()
     }
 
 
@@ -152,32 +152,30 @@ template PublicCoin(
     k += 1;
     reseed[k] = Reseed(ce_blowup_factor);
     reseed[k].prev_seed <== reseed[k-1].out;
-    for (var i = 0; i < trace_width; i++) {
+    for (var i = 0; i < constraint_frame_width; i++) {
         reseed[k].in[i] <== ood_constraint_evaluations[i];
     }
 
     // drawing all coefficient needed for the DEEP composition polynomial
     for (var i = 0; i < trace_width; i++){
-        for (var j = 0; j < 3; j++){
-        deep_coin[3 * i + j] = Poseidon(2);
-        deep_coin[3 * i + j].in[0] <== reseed[k].out;
-        deep_coin[3 * i + j].in[1] <== 3 * i + j + 1;
-        deep_trace_coefficients[i][j] <== deep_coin[3 * i + j].out;
-        }
+        deep_coin[3 * i] = Poseidon(2);
+        deep_coin[3 * i ].in[0] <== reseed[k].out;
+        deep_coin[3 * i ].in[1] <== 3 * i + 1;
+        deep_trace_coefficients[i] <== deep_coin[3 * i].out;
     }
-    for (var i = 0; i < trace_width; i++){
+    for (var i = 0; i < constraint_frame_width; i++){
         deep_coin[i + 3 * trace_width] = Poseidon(2);
         deep_coin[i + 3 * trace_width].in[0] <== reseed[k].out;
         deep_coin[i + 3 * trace_width].in[1] <== i + 3 * trace_width + 1;
         deep_constraint_coefficients[i] <== deep_coin[i + 3 * trace_width].out ;
     }
 
-    for (var i = 0; i < 2; i++){
-        deep_coin[i + 3 * trace_width + ce_blowup_factor] = Poseidon(2);
-        deep_coin[i + 3 * trace_width + ce_blowup_factor].in[0] <== reseed[k].out;
-        deep_coin[i + 3 * trace_width + ce_blowup_factor].in[1] <== i + 3 * trace_width + ce_blowup_factor + 1;
-        degree_adjustment_coefficients[i] <== deep_coin[i + 3 * trace_width + ce_blowup_factor].out ;
-    }
+    // for (var i = 0; i < 2; i++){
+    //     deep_coin[i + 3 * trace_width + ce_blowup_factor] = Poseidon(2);
+    //     deep_coin[i + 3 * trace_width + ce_blowup_factor].in[0] <== reseed[k].out;
+    //     deep_coin[i + 3 * trace_width + ce_blowup_factor].in[1] <== i + 3 * trace_width + ce_blowup_factor + 1;
+    //     degree_adjustment_coefficients[i] <== deep_coin[i + 3 * trace_width + ce_blowup_factor].out ;
+    // }
 
 
     // 5 - DRAW FRI ALPHAS + RESEED WITH FRI COMMITMENTS

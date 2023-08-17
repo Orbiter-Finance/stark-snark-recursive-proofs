@@ -477,8 +477,6 @@ where
         })?;
 
     // WRITE TO FILE
-    // Todo: add constraint_frame_width:\n \{} // constraint_frame_width
-
     let arguments = format!(
         "{}, // addicity\n    \
             {}, // ce_blowup_factor\n    \
@@ -496,7 +494,8 @@ where
             {}, // num_transition_constraints\n    \
             {}, // trace_length\n    \
             {}, // trace_width\n    \
-            {} // tree_depth",
+            {}, // tree_depth\n    \
+            {} // constraint_frame_width",
         E::TWO_ADICITY,
         air_context.ce_domain_size() / proof_options.trace_length,
         E::GENERATOR,
@@ -519,6 +518,7 @@ where
         proof_options.trace_length,
         proof_options.trace_width,
         log2(proof_options.trace_length * proof_options.fri_folding_factor()),
+        air_context.num_constraint_composition_columns(),
     );
 
     let file_contents = format!(

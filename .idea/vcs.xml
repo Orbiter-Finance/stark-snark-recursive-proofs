@@ -9,6 +9,5 @@
     <mapping directory="$PROJECT_DIR$/language/rapidsnark/depends/json" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/language/rapidsnark/depends/pistache" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/language/snarkjs" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/winterfell" vcs="Git" />
   </component>
 </project>

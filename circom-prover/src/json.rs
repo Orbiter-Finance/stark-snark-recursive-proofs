@@ -282,6 +282,8 @@ where
         .parse::<H, AIR::BaseField>(lde_domain_size, num_queries, constraint_frame_width)
         .unwrap();
 
+    let tree_depth = lde_domain_size.ilog2() as u8;
+
     // convert the batch Merkle proof into authentication paths
     // and map hash digests to BaseElements
     let constraint_query_proofs = constraint_query_proofs

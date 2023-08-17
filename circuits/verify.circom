@@ -68,32 +68,31 @@ template Verify(
     num_transition_constraints,
     trace_length,
     trace_width,
-    tree_depth
+    tree_depth,
+    constraint_frame_width
 ) {
     var remainder_size = (trace_length * lde_blowup_factor) \ (folding_factor ** num_fri_layers);
 
     signal input addicity_root;
     signal input constraint_commitment;
-    signal input constraint_evaluations[num_queries][trace_width];
-    signal input constraint_query_proofs[num_queries][tree_depth];
-    signal input fri_commitments[num_fri_layers + 1];
-    signal input fri_layer_proofs[num_fri_layers][num_queries][tree_depth];
-    signal input fri_layer_queries[num_fri_layers][num_queries * folding_factor];
-    signal input fri_remainder[remainder_size];
-    signal input ood_constraint_evaluations[trace_width];
-    signal input ood_frame_constraint_evaluation[trace_width];
-    signal input ood_trace_frame[2][trace_width];
+    signal input constraint_evaluations[num_queries][constraint_frame_width];//ok
+    signal input constraint_query_proofs[num_queries][tree_depth+1];//ok
+    signal input fri_commitments[num_fri_layers + 1];//ok
+    signal input fri_layer_proofs[num_fri_layers][num_queries][tree_depth];//ok
+    signal input fri_layer_queries[num_fri_layers][num_queries * folding_factor];//ok
+    signal input fri_remainder[remainder_size];//ok
+    signal input ood_constraint_evaluations[constraint_frame_width];//ok
+    signal input ood_frame_constraint_evaluation[trace_width];//ok
+    signal input ood_trace_frame[2][trace_width];//ok
     signal input pub_coin_seed[num_pub_coin_seed];
     signal input public_inputs[num_public_inputs];
     signal input pow_nonce;
     signal input trace_commitment;
     signal input trace_evaluations[num_queries][trace_width];
-    signal input trace_query_proofs[num_queries][tree_depth];
+    signal input trace_query_proofs[num_queries][tree_depth+1];
 
-    signal constraint_div[num_queries][trace_width];
-    signal constraint_evalxcoeff[num_queries][trace_width];
-    signal deep_composition[num_queries];
-    signal deep_deg_adjustment[num_queries];
+    signal constraint_div[num_queries][constraint_frame_width];
+    signal constraint_evalxcoeff[num_queries][constraint_frame_width];
     signal deep_evaluations[num_queries];
     signal deep_temp[num_queries][trace_width];
     signal g_lde;
@@ -111,7 +110,6 @@ template Verify(
     component multi_sel;
     component traceCommitmentVerifier;
     component x_pow_domain_offset;
-    component z_m;
 
 
     // CALCULATE TRACE DOMAIN AND LDE DOMAIN GENERATORS
@@ -144,7 +142,8 @@ template Verify(
         num_queries,
         num_transition_constraints,
         trace_length,
-        trace_width
+        trace_width,
+        constraint_frame_width
     );
 
     pub_coin.constraint_commitment <== constraint_commitment;
@@ -153,7 +152,7 @@ template Verify(
         pub_coin.fri_commitments[i] <== fri_commitments[i];
     }
 
-    for (var i = 0; i < trace_width; i++) {
+    for (var i = 0; i < constraint_frame_width; i++) {
         pub_coin.ood_constraint_evaluations[i] <== ood_constraint_evaluations[i];
     }
 
@@ -208,8 +207,12 @@ template Verify(
         ood.public_inputs[i] <== public_inputs[i];
     }
     ood.z <== pub_coin.z;
-    for (var i = 0; i < trace_width; i++) {
+
+    for (var i=0;i<constraint_frame_width;i++){
         ood.channel_ood_evaluations[i] <== ood_constraint_evaluations[i];
+    }
+
+    for (var i = 0; i < trace_width; i++) {
         ood.ood_frame_constraint_evaluation[i] <== ood_frame_constraint_evaluation[i];
         ood.frame[0][i] <== ood_trace_frame[0][i];
         ood.frame[1][i] <== ood_trace_frame[1][i];
@@ -219,26 +222,26 @@ template Verify(
     // VERIFY TRACE AND CONSTRAINT COMMITMENTS
     // ===========================================================================
 
-    traceCommitmentVerifier = MerkleOpeningsVerify(num_queries, tree_depth, trace_width);
+    traceCommitmentVerifier = MerkleOpeningsVerify(num_queries, tree_depth+1, trace_width);
     traceCommitmentVerifier.root <== trace_commitment;
     for (var i = 0; i < num_queries; i++) {
         traceCommitmentVerifier.indexes[i] <== pub_coin.query_positions[i];
         for (var j = 0; j < trace_width; j++) {
             traceCommitmentVerifier.leaves[i][j] <== trace_evaluations[i][j];
         }
-        for (var j = 0; j < tree_depth; j++) {
+        for (var j = 0; j < tree_depth+1; j++) {
             traceCommitmentVerifier.openings[i][j] <== trace_query_proofs[i][j];
         }
     }
 
-    constraintCommitmentVerifier = MerkleOpeningsVerify(num_queries, tree_depth, trace_width);
+    constraintCommitmentVerifier = MerkleOpeningsVerify(num_queries, tree_depth+1, constraint_frame_width);
     constraintCommitmentVerifier.root <== constraint_commitment;
     for (var i = 0; i < num_queries; i++) {
         constraintCommitmentVerifier.indexes[i] <== pub_coin.query_positions[i];
-        for (var j = 0; j < trace_width; j++) {
+        for (var j = 0; j < constraint_frame_width; j++) {
             constraintCommitmentVerifier.leaves[i][j] <== constraint_evaluations[i][j];
         }
-        for (var j = 0; j < tree_depth; j++) {
+        for (var j = 0; j < tree_depth+1; j++) {
             constraintCommitmentVerifier.openings[i][j] <== constraint_query_proofs[i][j];
         }
     }
@@ -247,10 +250,7 @@ template Verify(
     // COMPUTE DEEP POLYNOMIAL EVALUATIONS at the query positions
     // ===========================================================================
 
-    z_m = Pow(ce_blowup_factor);
-    z_m.in <== pub_coin.z;
-
-    multi_sel = MultiSelector(trace_length * lde_blowup_factor, num_queries);
+    multi_sel = MultiSelector(trace_length * lde_blowup_factor, num_queries); // ok
 
     x_pow[0] <== 1;
     multi_sel.in[0] <== 1;
@@ -264,39 +264,58 @@ template Verify(
         multi_sel.indexes[i] <== pub_coin.query_positions[i];
     }
 
+    // Todo fixed pub_coin.deep_trace_coefficients
     for (var i = 0; i < num_queries; i++) {
+
+        // DEEP trace composition
+        // - Assume each column value is an evaluation of a trace polynomial T_i(x).
+        // - For each T_i(x) compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z) and
+        //   T''_i = (T_i(x) - T_i(z * g)) / (x - z * g), where z is the out-of-domain point and
+        //   g is the the LDE domain generator.
+        // - Then, combine all T'_i(x) and T''_i(x) values together by computing
+        //   T(x) = sum((T'_i(x) + T''_i(x)) * cc_i) for all i, where cc_i is the coefficient for
+        //   for the random linear combination drawn from the public coin.
         for (var j = 0; j < trace_width; j++) {
-            // DEEP trace composition
+
             trace_div[i][j][0] <-- (trace_evaluations[i][j] - ood_trace_frame[0][j]) / (multi_sel.out[i] - pub_coin.z);
             trace_div[i][j][0] * (multi_sel.out[i] - pub_coin.z) === trace_evaluations[i][j] - ood_trace_frame[0][j];
 
             deep_temp[i][j] <== multi_sel.out[i] - pub_coin.z * g_trace;
+
             trace_div[i][j][1] <-- (trace_evaluations[i][j] - ood_trace_frame[1][j]) / deep_temp[i][j];
             trace_div[i][j][1] * deep_temp[i][j] === trace_evaluations[i][j] - ood_trace_frame[1][j];
 
-            trace_deep_composition[i][j][0] <== pub_coin.deep_trace_coefficients[j][0] * trace_div[i][j][0];
+            trace_deep_composition[i][j][0] <== pub_coin.deep_trace_coefficients[j] * trace_div[i][j][0];
 
-            // DEEP constraint composition
+
             if (j == 0) {
-                trace_deep_composition[i][j][1] <== trace_deep_composition[i][j][0]+ pub_coin.deep_trace_coefficients[j][1] * trace_div[i][j][1];
-
-                constraint_div[i][j] <-- (constraint_evaluations[i][j] - ood_constraint_evaluations[j]) / (multi_sel.out[i] - z_m.out);
-                constraint_div[i][j]  * (multi_sel.out[i] - z_m.out) ===  constraint_evaluations[i][j] - ood_constraint_evaluations[j];
-                constraint_evalxcoeff[i][j] <== constraint_div[i][j] * pub_coin.deep_constraint_coefficients[j];
+                trace_deep_composition[i][j][1] <== trace_deep_composition[i][j][0] + pub_coin.deep_trace_coefficients[j] * trace_div[i][j][1];
             } else {
-                trace_deep_composition[i][j][1] <== trace_deep_composition[i][j-1][1] + trace_deep_composition[i][j][0]+ pub_coin.deep_trace_coefficients[j][1] * trace_div[i][j][1];
+                trace_deep_composition[i][j][1] <== trace_deep_composition[i][j-1][1] + trace_deep_composition[i][j][0] + pub_coin.deep_trace_coefficients[j] * trace_div[i][j][1];
+            }
+        }
 
-                constraint_div[i][j] <-- (constraint_evaluations[i][j] - ood_constraint_evaluations[j]) / (multi_sel.out[i] - z_m.out);
-                (constraint_div[i][j])  * (multi_sel.out[i] - z_m.out) ===  constraint_evaluations[i][j] - ood_constraint_evaluations[j];
+        // DEEP constraint composition
+        // - Assume each queried value is an evaluation of a composition polynomial column H_i(x).
+        // - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z)) / (x - z).
+        // - Then, combine all H_i(x) values together by computing H(x) = sum(H_i(x) * cc_i) for
+        //   all i, where cc_i is the coefficient for the random linear combination drawn from the
+        //   public coin.
+        for(var j=0;j<constraint_frame_width;j++){
+
+            if(j==0){
+                constraint_div[i][j] <-- (constraint_evaluations[i][j] - ood_constraint_evaluations[j]) / (multi_sel.out[i] - pub_coin.z);
+                constraint_div[i][j]  * (multi_sel.out[i] - pub_coin.z) ===  constraint_evaluations[i][j] - ood_constraint_evaluations[j];
+                constraint_evalxcoeff[i][j] <== constraint_div[i][j] * pub_coin.deep_constraint_coefficients[j];
+            }else{
+                constraint_div[i][j] <-- (constraint_evaluations[i][j] - ood_constraint_evaluations[j]) / (multi_sel.out[i] - pub_coin.z);
+                (constraint_div[i][j])  * (multi_sel.out[i] - pub_coin.z) ===  constraint_evaluations[i][j] - ood_constraint_evaluations[j];
                 constraint_evalxcoeff[i][j] <== constraint_evalxcoeff[i][j-1] + constraint_div[i][j] * pub_coin.deep_constraint_coefficients[j];
             }
         }
 
-        deep_composition[i] <== trace_deep_composition[i][trace_width -1][1] + constraint_evalxcoeff[i][trace_width -1];
-
-        // final composition
-        deep_deg_adjustment[i] <== pub_coin.degree_adjustment_coefficients[0] + multi_sel.out[i] * pub_coin.degree_adjustment_coefficients[1];
-        deep_evaluations[i] <== deep_composition[i] * deep_deg_adjustment[i];
+        // compute C(x) by adding the two compositions together
+        deep_evaluations[i] <== trace_deep_composition[i][trace_width -1][1] + constraint_evalxcoeff[i][constraint_frame_width -1];
     }
 
 
